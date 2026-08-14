@@ -42,7 +42,6 @@ def carregar_recorde():
     except (FileNotFoundError, ValueError):
         return 0
 
-
 # salva o novo recorde
 def salvar_recorde(recorde):
     with open(arquivo_recorde, "w") as arquivo:

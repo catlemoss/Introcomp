@@ -1,7 +1,7 @@
-# configurações iniciais
 import pygame
 import random
 
+# inicialização do pygame
 pygame.init()
 pygame.display.set_caption("SNAKE: not alone")
 
@@ -28,32 +28,32 @@ tamanho_quadrado = 10
 velocidade_jogo = 15
 
 # quantidade de obstáculos
-quantidade_obstaculos = 6
+quantidade_obstaculos = 9
 
 # arquivo em que o recorde será guardado
 arquivo_recorde = "recorde.txt"
 
-# pontuacao para o inimigo
-pontos_4_inimigo = 10
+# pontuacao para o shadow
+pontos_4_shadow = 2
 
+# lidando com o record
 def carregar_recorde():
     try:
-        with open(arquivo_recorde, "r", encoding="utf-8") as arquivo:
+        with open(arquivo_recorde, "r") as arquivo:
             conteudo = arquivo.read().strip()
 
-        # novo formato: nome,pontos
         if "," in conteudo:
             nome, pontos = conteudo.rsplit(",", 1)
             return nome, int(pontos)
 
-        # caso o recorde.txt antigo tenha somente o número
-        return "Desconhecido", int(conteudo)
+        # caso o recorde.txt antigo tenha somente um número
+        return "Ninguém", int(conteudo)
 
     except (FileNotFoundError, ValueError):
         return "---", 0
 
 def salvar_recorde(nome, recorde):
-    with open(arquivo_recorde, "w", encoding="utf-8") as arquivo:
+    with open(arquivo_recorde, "w") as arquivo:
         arquivo.write(f"{nome},{recorde}")
 
 
@@ -98,36 +98,36 @@ def gerar_obstaculos(quantidade, inicio_x, inicio_y):
 
     return obstaculos
 
-def gerar_inimigo(pixels, obstaculos):
+def gerar_shadow(pixels, obstaculos):
     while True:
-        inimigo_x, inimigo_y = gerar_posicao_aleatoria()
+        shadow_x, shadow_y = gerar_posicao_aleatoria()
 
-        posicao_inimigo = [inimigo_x, inimigo_y]
+        posicao_shadow = [shadow_x, shadow_y]
 
         # não pode nascer na cobra nem em obstáculo
-        if posicao_inimigo in pixels or posicao_inimigo in obstaculos:
+        if posicao_shadow in pixels or posicao_shadow in obstaculos:
             continue
 
         # cabeça da cobra
         cabeca_x, cabeca_y = pixels[-1]
 
-        # evita o inimigo nascer colado na cobra
-        distancia = abs(inimigo_x - cabeca_x) + abs(inimigo_y - cabeca_y)
+        # evita o shadow nascer colado na cobra
+        distancia = abs(shadow_x - cabeca_x) + abs(shadow_y - cabeca_y)
 
         if distancia >= 250:
-            return inimigo_x, inimigo_y
+            return shadow_x, shadow_y
 
 # DESENHOS
-def desenhar_comida(tamanho, comida_x, comida_y):
-    pygame.draw.rect(tela, verde, [comida_x, comida_y, tamanho, tamanho])
+def desenhar_comida(comida_x, comida_y):
+    pygame.draw.rect(tela, verde, [comida_x, comida_y, tamanho_quadrado, tamanho_quadrado])
 
-def desenhar_cobra(tamanho, pixels):
+def desenhar_cobra(pixels):
     for pixel in pixels:
-        pygame.draw.rect(tela, branco, [pixel[0], pixel[1], tamanho, tamanho])
+        pygame.draw.rect(tela, branco, [pixel[0], pixel[1], tamanho_quadrado, tamanho_quadrado])
 
-def desenhar_obstaculos(tamanho, obstaculos):
+def desenhar_obstaculos(obstaculos):
     for obstaculo in obstaculos:
-        pygame.draw.rect(tela, cinza, [obstaculo[0], obstaculo[1], tamanho, tamanho])
+        pygame.draw.rect(tela, cinza, [obstaculo[0], obstaculo[1], tamanho_quadrado, tamanho_quadrado])
 
 def desenhar_pontuacao(pontuacao, recorde, velocidade):
     fonte = pygame.font.SysFont("Consolas", 22)
@@ -137,8 +137,8 @@ def desenhar_pontuacao(pontuacao, recorde, velocidade):
     tela.blit(texto, [5, 5])
 
 # shadow snake
-def desenhar_inimigo(inimigo_x, inimigo_y):
-    pygame.draw.rect(tela, roxo, [inimigo_x, inimigo_y, tamanho_quadrado, tamanho_quadrado])
+def desenhar_shadow(shadow_x, shadow_y):
+    pygame.draw.rect(tela, roxo, [shadow_x, shadow_y, tamanho_quadrado, tamanho_quadrado])
 
 def desenhar_olho_shadow(x, y, abertura, angulo):
     largura_olho = 100
@@ -146,10 +146,10 @@ def desenhar_olho_shadow(x, y, abertura, angulo):
 
     altura_olho = max(1, int(altura_maxima * abertura))
 
-    # cria uma superficie transparente
+    # cria uma superficie transparente para o desenho
     superficie_olho = pygame.Surface((largura_olho, altura_maxima), pygame.SRCALPHA)
 
-    # olho vermelho
+    # olho roxo
     pygame.draw.ellipse(superficie_olho, roxo,
         [
             0,
@@ -159,7 +159,7 @@ def desenhar_olho_shadow(x, y, abertura, angulo):
         ]
     )
 
-    # pupila vertical
+    # pupila de gato
     if abertura > 0.3:
         altura_pupila = int(altura_olho * 0.8)
 
@@ -174,7 +174,7 @@ def desenhar_olho_shadow(x, y, abertura, angulo):
 
     # gira o olho
     olho_rotacionado = pygame.transform.rotate(superficie_olho, angulo)
-    rect = olho_rotacionado.get_rect(center=(x, y))
+    rect = olho_rotacionado.get_rect(center = (x, y))
 
     tela.blit(olho_rotacionado, rect)
 
@@ -204,27 +204,30 @@ def selecionar_deslocamento(tecla, velocidade_x, velocidade_y):
 
     return velocidade_x, velocidade_y
 
-def mover_inimigo(inimigo_x, inimigo_y, cobra_x, cobra_y):
+def mover_shadow(shadow_x, shadow_y, cobra_x, cobra_y):
 
-    # tenta se aproximar primeiro no eixo que está mais distante
-    distancia_x = cobra_x - inimigo_x
-    distancia_y = cobra_y - inimigo_y
+    # Se distancia_x > 0 = cobra a direita
+    # Se < 0: cobra a esquerda
 
+    distancia_x = cobra_x - shadow_x
+    distancia_y = cobra_y - shadow_y
+
+    # distância maior = shadow snake anda
     if abs(distancia_x) > abs(distancia_y):
         if distancia_x > 0:
-            inimigo_x += tamanho_quadrado
+            shadow_x += tamanho_quadrado
 
         elif distancia_x < 0:
-            inimigo_x -= tamanho_quadrado
+            shadow_x -= tamanho_quadrado
 
     else:
         if distancia_y > 0:
-            inimigo_y += tamanho_quadrado
+            shadow_y += tamanho_quadrado
 
         elif distancia_y < 0:
-            inimigo_y -= tamanho_quadrado
+            shadow_y -= tamanho_quadrado
 
-    return inimigo_x, inimigo_y
+    return shadow_x, shadow_y
 
 
 # exibe a tela de fim de jogo
@@ -275,11 +278,11 @@ def rodar_jogo():
     while jogar_novamente:
         fim_jogo = False
 
-        # posição inicial da cobra
+        # cobra no meio
         pos_x = largura // 2
         pos_y = altura // 2
 
-        # a cobra começa parada
+        # cobra começa parada
         velocidade_x = 0
         velocidade_y = 0
 
@@ -292,16 +295,13 @@ def rodar_jogo():
         pixels = [[pos_x, pos_y]]
 
         obstaculos = gerar_obstaculos(quantidade_obstaculos, pos_x, pos_y)
-
         comida_x, comida_y = gerar_comida(pixels, obstaculos)
 
-        # inimigo ainda não existe
-        inimigo_ativo = False
-        inimigo_x = 0
-        inimigo_y = 0
-
-        # controla de quanto em quanto tempo ele anda
-        contador_inimigo = 0
+        # shadow ainda não existe
+        shadow_ativo = False
+        shadow_x = 0
+        shadow_y = 0
+        velocidade_shadow = 0
 
         while not fim_jogo:
 
@@ -329,17 +329,17 @@ def rodar_jogo():
             if len(pixels) > tamanho_cobra:
                 del pixels[0]
 
-            # verifica se bateu nela msm
+            # verifica se bateu nela menos a cabeça
             for pixel in pixels[:-1]:
                 if pixel == [pos_x, pos_y]:
                     fim_jogo = True
 
-            if fim_jogo:
-                continue
-
             # verifica se bateu em algum obstaculo
             if [pos_x, pos_y] in obstaculos:
                 fim_jogo = True
+                continue
+
+            if fim_jogo:
                 continue
 
             # comeu a comida
@@ -348,8 +348,8 @@ def rodar_jogo():
 
                 pontuacao = tamanho_cobra - 1
 
-                # aumenta 1 ponto de velocidade a cada 2 comidas
-                velocidade_atual = velocidade_jogo + pontuacao // 2
+                # aumenta 1 ponto de velocidade a cada 3 comidas
+                velocidade_atual = velocidade_jogo + pontuacao // 3
 
                 # impede que o jogo fique rapido demais kkk
                 velocidade_atual = min(velocidade_atual, 30)
@@ -363,31 +363,29 @@ def rodar_jogo():
                 comida_x, comida_y = gerar_comida(pixels, obstaculos)
 
 
+            # introducao do shadow quando tiver n pnts
             pontuacao = tamanho_cobra - 1
 
-            # introducao do inimigo quando tiver n pnts
-            if pontuacao >= pontos_4_inimigo and not inimigo_ativo:
-                continuar = mostrar_shadow_snake(nome_jogador)
+            if pontuacao >= pontos_4_shadow and not shadow_ativo:
+                mostrar_shadow_snake(nome_jogador)
 
-                inimigo_x, inimigo_y = gerar_inimigo(pixels, obstaculos)
-                inimigo_ativo = True
+                shadow_x, shadow_y = gerar_shadow(pixels, obstaculos)
+                shadow_ativo = True
 
-                print("INIMIGO ATIVADO!")
+            if shadow_ativo:
+                velocidade_shadow += 1
 
-            if inimigo_ativo:
-                contador_inimigo += 1
+                # velocidade do shadow ++ a cada 7 pnts
+                movimentos = (pontuacao - pontos_4_shadow) // 7
+                intervalo_shadow = max(1, 4 - movimentos)
 
-                # velocidade do inimigo ++ a cada 5 pnts
-                movimentos = (pontuacao - pontos_4_inimigo) // 5
-                intervalo_inimigo = max(1, 4 - movimentos)
+                if velocidade_shadow >= intervalo_shadow:
+                    shadow_x, shadow_y = mover_shadow(shadow_x, shadow_y, pos_x, pos_y)
 
-                if contador_inimigo >= intervalo_inimigo:
-                    inimigo_x, inimigo_y = mover_inimigo(inimigo_x, inimigo_y, pos_x, pos_y)
+                    velocidade_shadow = 0
 
-                    contador_inimigo = 0
-
-                # inimigo pegou a cobra
-                if [inimigo_x, inimigo_y] in pixels:
+                # shadow pegou a cobra
+                if [shadow_x, shadow_y] in pixels:
                     fim_jogo = True
                     continue
 
@@ -395,15 +393,13 @@ def rodar_jogo():
             tela.fill(preto)
 
             # desenha os objetos
-            desenhar_comida(tamanho_quadrado, comida_x, comida_y)
+            desenhar_comida(comida_x, comida_y)
+            desenhar_obstaculos(obstaculos)
 
-            desenhar_obstaculos(tamanho_quadrado, obstaculos)
+            if shadow_ativo:
+                desenhar_shadow(shadow_x, shadow_y)
 
-            if inimigo_ativo:
-                desenhar_inimigo(inimigo_x, inimigo_y)
-
-            desenhar_cobra(tamanho_quadrado, pixels)
-
+            desenhar_cobra(pixels)
             desenhar_pontuacao(tamanho_cobra - 1, recorde, velocidade_atual)
 
             # atualiza a tela
@@ -413,7 +409,6 @@ def rodar_jogo():
             relogio.tick(velocidade_atual)
 
         pontuacao_final = tamanho_cobra - 1
-
         jogar_novamente = mostrar_game_over(pontuacao_final, recorde)
 
     pygame.quit()
@@ -440,11 +435,8 @@ def pedir_nome():
 
         # caixa onde aparece o nome
         caixa = pygame.Rect(largura / 2 - 150, 290, 300, 45)
-
         pygame.draw.rect(tela, branco, caixa, 2)
-
         tela.blit(nome_na_tela, [caixa.x + 10, caixa.y + 7])
-
         tela.blit(continuar, [largura / 2 - continuar.get_width() / 2, 370])
 
         pygame.display.update()
@@ -455,17 +447,21 @@ def pedir_nome():
                 return None
 
             if evento.type == pygame.KEYDOWN:
+
                 # apagar
                 if evento.key == pygame.K_BACKSPACE:
                     nome = nome[:-1]
+
                 # começar jogo
                 elif evento.key == pygame.K_RETURN:
                     if nome.strip() != "":
                         return nome.strip()
+                    
                 # digitar
                 else:
                     if len(nome) < 15:
                         nome += evento.unicode
+                        # qualquer caractere digitado
 
         relogio.tick(30)
 
@@ -478,7 +474,7 @@ def mostrar_shadow_snake(nome_jogador):
 
     # retorna o tempo
     inicio = pygame.time.get_ticks()
-    duracao_total = 9000
+    duracao_total = 11000
 
     while True:
         tempo = pygame.time.get_ticks() - inicio
@@ -501,14 +497,14 @@ def mostrar_shadow_snake(nome_jogador):
         elif tempo < 5200:
             # número entre 0 e 1
             progresso = (tempo - 2700) / 2500
-            abertura = progresso **2                # aumento de velocidade *2
+            abertura = progresso **2                # aumento de velocidade pot2
             desenhar_olhos_shadow(abertura)
 
         # olhos abertos
         elif tempo < 6200:
             desenhar_olhos_shadow(1)
 
-        elif tempo < 7200:
+        elif tempo < 8400:
             desenhar_olhos_shadow(1)
             texto_nome = fonte_media.render(f"Cuidado, {nome_jogador}.", True, branco)
 
@@ -523,6 +519,6 @@ def mostrar_shadow_snake(nome_jogador):
             tela.blit(texto_shadow, [largura // 2 - texto_shadow.get_width() // 2, altura - 100])
 
         pygame.display.update()
-        relogio.tick(60)
+        relogio.tick(60) # animação suave dos olhos do shadow
 
 rodar_jogo()

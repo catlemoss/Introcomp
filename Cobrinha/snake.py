@@ -26,6 +26,7 @@ tamanho_quadrado = 10
 
 # velocidade inicial
 velocidade_jogo = 15
+velocidade_com_comida = 3
 
 # quantidade de obstáculos
 quantidade_obstaculos = 9
@@ -34,7 +35,8 @@ quantidade_obstaculos = 9
 arquivo_recorde = "recorde.txt"
 
 # pontuacao para o shadow
-pontos_4_shadow = 2
+pontos_4_shadow = 10
+pontos_4_shadow_vel = 7
 
 # lidando com o record
 def carregar_recorde():
@@ -349,7 +351,7 @@ def rodar_jogo():
                 pontuacao = tamanho_cobra - 1
 
                 # aumenta 1 ponto de velocidade a cada 3 comidas
-                velocidade_atual = velocidade_jogo + pontuacao // 3
+                velocidade_atual = velocidade_jogo + pontuacao // velocidade_com_comida
 
                 # impede que o jogo fique rapido demais kkk
                 velocidade_atual = min(velocidade_atual, 30)
@@ -376,8 +378,8 @@ def rodar_jogo():
                 velocidade_shadow += 1
 
                 # velocidade do shadow ++ a cada 7 pnts
-                movimentos = (pontuacao - pontos_4_shadow) // 7
-                intervalo_shadow = max(1, 4 - movimentos)
+                nivel_velocidade_shadow = (pontuacao - pontos_4_shadow) // pontos_4_shadow_vel
+                intervalo_shadow = max(2, 4 - nivel_velocidade_shadow )           # 2 caso 4 - mov = 0
 
                 if velocidade_shadow >= intervalo_shadow:
                     shadow_x, shadow_y = mover_shadow(shadow_x, shadow_y, pos_x, pos_y)

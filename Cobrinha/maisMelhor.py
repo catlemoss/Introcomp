@@ -34,7 +34,7 @@ quantidade_obstaculos = 6
 arquivo_recorde = "recorde.txt"
 
 # pontuacao para o inimigo
-pontos_4_inimigo = 2
+pontos_4_inimigo = 10
 
 def carregar_recorde():
     try:
@@ -150,7 +150,7 @@ def desenhar_olho_shadow(x, y, abertura, angulo):
     superficie_olho = pygame.Surface((largura_olho, altura_maxima), pygame.SRCALPHA)
 
     # olho vermelho
-    pygame.draw.ellipse(superficie_olho, vermelho,
+    pygame.draw.ellipse(superficie_olho, roxo,
         [
             0,
             altura_maxima // 2 - altura_olho // 2,
@@ -181,22 +181,6 @@ def desenhar_olho_shadow(x, y, abertura, angulo):
 def desenhar_olhos_shadow(abertura):
     desenhar_olho_shadow(largura // 2 - 100, altura // 2, abertura, -15)
     desenhar_olho_shadow(largura // 2 + 100, altura // 2, abertura, 15)
-
-def desenhar_sorriso_shadow():
-    centro_x = largura // 2
-    centro_y = altura // 2 + 90
-
-    pygame.draw.arc(tela,branco, [centro_x - 100, centro_y - 50, 200, 100], 0.15, 3.0, 5)
-
-    # dentinhos
-    for x in range(centro_x - 70, centro_x + 71, 35):
-        pontos = [
-            (x - 8, centro_y + 10),
-            (x + 8, centro_y + 10),
-            (x, centro_y + 28)
-        ]
-
-        pygame.draw.polygon(tela, branco, pontos)
 
 
 # seleciona a direção da cobra
@@ -494,7 +478,7 @@ def mostrar_shadow_snake(nome_jogador):
 
     # retorna o tempo
     inicio = pygame.time.get_ticks()
-    duracao_total = 8000
+    duracao_total = 9000
 
     while True:
         tempo = pygame.time.get_ticks() - inicio
@@ -517,14 +501,19 @@ def mostrar_shadow_snake(nome_jogador):
         elif tempo < 5200:
             # número entre 0 e 1
             progresso = (tempo - 2700) / 2500
-            abertura = progresso **2
+            abertura = progresso **2                # aumento de velocidade *2
             desenhar_olhos_shadow(abertura)
 
         # olhos abertos
         elif tempo < 6200:
             desenhar_olhos_shadow(1)
 
-        # sorriso
+        elif tempo < 7200:
+            desenhar_olhos_shadow(1)
+            texto_nome = fonte_media.render(f"Cuidado, {nome_jogador}.", True, branco)
+
+            tela.blit(texto_nome, [largura // 2 - texto_nome.get_width() // 2, altura - 150])
+
         else:
             desenhar_olhos_shadow(1)
             texto_nome = fonte_media.render(f"Cuidado, {nome_jogador}.", True, branco)
@@ -534,13 +523,6 @@ def mostrar_shadow_snake(nome_jogador):
             tela.blit(texto_shadow, [largura // 2 - texto_shadow.get_width() // 2, altura - 100])
 
         pygame.display.update()
-
-        # quer fechar o jogo?
-        for evento in pygame.event.get():
-            if evento.type == pygame.QUIT:
-                pygame.quit()
-                return False
-
         relogio.tick(60)
 
 rodar_jogo()

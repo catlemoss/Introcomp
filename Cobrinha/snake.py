@@ -36,7 +36,6 @@ arquivo_recorde = "recorde.txt"
 
 # pontuacao para o shadow
 pontos_4_shadow = 10
-pontos_4_shadow_vel = 7
 
 # lidando com o record
 def carregar_recorde():
@@ -60,9 +59,9 @@ def salvar_recorde(nome, recorde):
 
 
 # gera uma posiçao aleatoria alinhada com os quadrados
-def gerar_posicao_aleatoria():
-    pos_x = random.randrange(0, largura, tamanho_quadrado)
-    pos_y = random.randrange(0, altura, tamanho_quadrado)
+def gerar_posicao_aleatoria(margem):
+    pos_x = random.randrange(margem, largura-margem, tamanho_quadrado)
+    pos_y = random.randrange(margem, altura-margem, tamanho_quadrado)
 
     return pos_x, pos_y
 
@@ -70,7 +69,7 @@ def gerar_posicao_aleatoria():
 # gera a comida em uma posiçao livre
 def gerar_comida(pixels, obstaculos):
     while True:
-        comida_x, comida_y = gerar_posicao_aleatoria()
+        comida_x, comida_y = gerar_posicao_aleatoria(30)
 
         posicao_comida = [comida_x, comida_y]
 
@@ -84,7 +83,7 @@ def gerar_obstaculos(quantidade, inicio_x, inicio_y):
     obstaculos = []
 
     while len(obstaculos) < quantidade:
-        obstaculo_x, obstaculo_y = gerar_posicao_aleatoria()
+        obstaculo_x, obstaculo_y = gerar_posicao_aleatoria(30)
 
         novo_obstaculo = [obstaculo_x, obstaculo_y]
 
@@ -102,7 +101,7 @@ def gerar_obstaculos(quantidade, inicio_x, inicio_y):
 
 def gerar_shadow(pixels, obstaculos):
     while True:
-        shadow_x, shadow_y = gerar_posicao_aleatoria()
+        shadow_x, shadow_y = gerar_posicao_aleatoria(60)
 
         posicao_shadow = [shadow_x, shadow_y]
 
@@ -231,6 +230,52 @@ def mover_shadow(shadow_x, shadow_y, cobra_x, cobra_y):
 
     return shadow_x, shadow_y
 
+def mover_shadow_rondando(shadow_x, shadow_y, direcao, obstaculos):
+    margem = 60
+
+    direcoes = [
+        (tamanho_quadrado, 0),     # direita
+        (-tamanho_quadrado, 0),    # esquerda
+        (0, tamanho_quadrado),     # baixo
+        (0, -tamanho_quadrado)     # cima
+    ]
+
+    # pequena chance de mudar espontaneamente de direção
+    if random.random() < 0.08:
+        direcao = random.choice(direcoes)
+
+    dx, dy = direcao
+
+    novo_x = shadow_x + dx
+    novo_y = shadow_y + dy
+
+    # verifica se a próxima posição está dentro da área onde pode rondar
+    posicao_valida = ( margem <= novo_x < largura - margem and margem <= novo_y < altura - margem and [novo_x, novo_y] not in obstaculos)
+
+    # se pode andar reto, continua
+    if posicao_valida:
+        return novo_x, novo_y, direcao
+
+    # se não, procura outra direção
+    direcoes_validas = []
+
+    for nova_direcao in direcoes:
+        dx, dy = nova_direcao
+
+        teste_x = shadow_x + dx
+        teste_y = shadow_y + dy
+
+        if (margem <= teste_x < largura - margem and margem <= teste_y < altura - margem and [teste_x, teste_y] not in obstaculos):
+            direcoes_validas.append(nova_direcao)
+
+    if direcoes_validas:
+        nova_direcao = random.choice(direcoes_validas)
+        dx, dy = nova_direcao
+
+        return (shadow_x + dx, shadow_y + dy, nova_direcao)
+
+    return shadow_x, shadow_y, direcao
+
 
 # exibe a tela de fim de jogo
 def mostrar_game_over(pontuacao, recorde):
@@ -303,7 +348,15 @@ def rodar_jogo():
         shadow_ativo = False
         shadow_x = 0
         shadow_y = 0
-        velocidade_shadow = 0
+
+        # quantos ciclos p/ shadow andar again
+        contador_shadow = 0
+
+        # direcao quando ele ta em ronda
+        direcao_shadow = (tamanho_quadrado, 0)
+
+        # comportamento atual do shadow
+        modo_shadow = "ronda"
 
         while not fim_jogo:
 
@@ -372,19 +425,52 @@ def rodar_jogo():
                 mostrar_shadow_snake(nome_jogador)
 
                 shadow_x, shadow_y = gerar_shadow(pixels, obstaculos)
+
+                # escolhe uma direção aleatoria 4 shadow
+                direcao_shadow = random.choice([
+                    (tamanho_quadrado, 0),    # direita
+                    (-tamanho_quadrado, 0),   # esquerda
+                    (0, tamanho_quadrado),    # baixo
+                    (0, -tamanho_quadrado)    # cima
+                ])
+
+                modo_shadow = "ronda"
                 shadow_ativo = True
 
             if shadow_ativo:
-                velocidade_shadow += 1
 
-                # velocidade do shadow ++ a cada 7 pnts
-                nivel_velocidade_shadow = (pontuacao - pontos_4_shadow) // pontos_4_shadow_vel
-                intervalo_shadow = max(2, 4 - nivel_velocidade_shadow )           # 2 caso 4 - mov = 0
+                # calcula a distância entre o shadow e a cabeça da cobra
+                distancia_shadow = (abs(pos_x - shadow_x) + abs(pos_y - shadow_y))
 
-                if velocidade_shadow >= intervalo_shadow:
-                    shadow_x, shadow_y = mover_shadow(shadow_x, shadow_y, pos_x, pos_y)
+                # se estiver em ronda e a cobra chegar perto -> vai a caça
+                if modo_shadow == "ronda" and distancia_shadow <= 200:
+                    modo_shadow = "perseguindo"
 
-                    velocidade_shadow = 0
+                # se estiver perseguindo e a cobra conseguir fugir... afs parei
+                elif modo_shadow == "perseguindo" and distancia_shadow >= 330:
+                    modo_shadow = "ronda"
+
+                # conta as atualizações do jogo
+                contador_shadow += 1
+
+                # perseguindo anda rapido
+                if modo_shadow == "perseguindo":
+                    intervalo_shadow = 2
+
+                # rondando anda mais devagar
+                else:
+                    intervalo_shadow = 4
+
+                # só movimenta quando o contador atingir o intervalo
+                if contador_shadow >= intervalo_shadow:
+
+                    if modo_shadow == "perseguindo":
+                        shadow_x, shadow_y = mover_shadow(shadow_x, shadow_y, pos_x, pos_y)
+                    else:
+                        shadow_x, shadow_y, direcao_shadow = mover_shadow_rondando(shadow_x, shadow_y, direcao_shadow, obstaculos)
+
+                    # começa a contar novamente
+                    contador_shadow = 0
 
                 # shadow pegou a cobra
                 if [shadow_x, shadow_y] in pixels:
